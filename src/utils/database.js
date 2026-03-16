@@ -1,129 +1,165 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 
 const PREFIX = 'empire_';
+const QUEUE_KEY = 'empire_offline_queue';
 
 // ─── LocalStorage helpers ───
-function localGet(key) {
-  try {
-    const data = localStorage.getItem(PREFIX + key);
-    return data ? JSON.parse(data) : [];
-  } catch { return []; }
+function localGet(key) { try { return JSON.parse(localStorage.getItem(PREFIX + key)) || []; } catch { return []; } }
+function localSet(key, data) { try { localStorage.setItem(PREFIX + key, JSON.stringify(data)); } catch {} }
+
+// ════════════════════════════════════════════════
+// OFFLINE QUEUE — Stores failed operations for later sync
+// ════════════════════════════════════════════════
+function getQueue() { try { return JSON.parse(localStorage.getItem(QUEUE_KEY)) || []; } catch { return []; } }
+function setQueue(q) { try { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); } catch {} }
+
+function enqueue(op) {
+  const q = getQueue();
+  q.push({ ...op, timestamp: Date.now() });
+  setQueue(q);
+  console.log(`[Offline] Queued ${op.action} on ${op.table} (${q.length} pending)`);
 }
 
-function localSet(key, data) {
-  try { localStorage.setItem(PREFIX + key, JSON.stringify(data)); } catch {}
+// Process the offline queue when back online
+async function processQueue() {
+  if (!isSupabaseConfigured()) return { processed: 0, failed: 0 };
+  const q = getQueue();
+  if (q.length === 0) return { processed: 0, failed: 0 };
+
+  console.log(`[Offline] Processing ${q.length} queued operations...`);
+  const failed = [];
+  let processed = 0;
+
+  for (const op of q) {
+    try {
+      if (op.action === 'insert') {
+        const { error } = await supabase.from(op.table).upsert(op.data, { onConflict: 'id' });
+        if (error) throw error;
+      } else if (op.action === 'delete') {
+        const { error } = await supabase.from(op.table).delete().eq('id', op.id);
+        if (error) throw error;
+      }
+      processed++;
+    } catch (err) {
+      console.warn(`[Offline] Failed to process op:`, err.message);
+      // Only re-queue if not too old (max 7 days)
+      if (Date.now() - op.timestamp < 7 * 24 * 60 * 60 * 1000) {
+        failed.push(op);
+      }
+    }
+  }
+
+  setQueue(failed);
+  console.log(`[Offline] Done: ${processed} synced, ${failed.length} remaining`);
+  return { processed, failed: failed.length };
 }
 
-// ─── Supabase CRUD ───
+// ════════════════════════════════════════════════
+// NETWORK STATUS
+// ════════════════════════════════════════════════
+let _online = navigator.onLine;
+const listeners = new Set();
+
+export function isOnline() { return _online; }
+export function getQueueSize() { return getQueue().length; }
+export function onNetworkChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
+
+function notifyListeners() { listeners.forEach(fn => fn(_online)); }
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', async () => {
+    _online = true;
+    notifyListeners();
+    console.log('[Network] Back online — syncing queue...');
+    const result = await processQueue();
+    if (result.processed > 0) notifyListeners(); // trigger UI refresh
+  });
+  window.addEventListener('offline', () => {
+    _online = false;
+    notifyListeners();
+    console.log('[Network] Gone offline');
+  });
+}
+
+// ════════════════════════════════════════════════
+// DATABASE CRUD
+// ════════════════════════════════════════════════
 export const db = {
-  // Fetch all rows from a table
   async getAll(table) {
     if (!isSupabaseConfigured()) return localGet(table);
-    
     try {
-      const { data, error } = await supabase
-        .from(table)
-        .select('*')
-        .order('date', { ascending: false });
-      
+      const { data, error } = await supabase.from(table).select('*').order('date', { ascending: false });
       if (error) throw error;
-      
-      // Cache locally for offline
       localSet(table, data || []);
+      // Process any pending queue while we're connected
+      processQueue().catch(() => {});
       return data || [];
     } catch (err) {
-      console.warn(`[DB] Supabase fetch failed for ${table}, using localStorage:`, err.message);
+      console.warn(`[DB] Fetch failed for ${table}, using cache:`, err.message);
       return localGet(table);
     }
   },
 
-  // Insert a new row
   async insert(table, row) {
-    // Generate a local id
     const newRow = { ...row, id: row.id || crypto.randomUUID() };
-    
-    if (!isSupabaseConfigured()) {
-      const current = localGet(table);
-      const updated = [...current, newRow];
-      localSet(table, updated);
-      return { data: newRow, source: 'local' };
-    }
+
+    // Always save locally first
+    const current = localGet(table);
+    localSet(table, [...current, newRow]);
+
+    if (!isSupabaseConfigured()) return { data: newRow, source: 'local' };
 
     try {
-      const { data, error } = await supabase
-        .from(table)
-        .insert(newRow)
-        .select()
-        .single();
-      
+      if (!navigator.onLine) throw new Error('offline');
+      const { data, error } = await supabase.from(table).insert(newRow).select().single();
       if (error) throw error;
-      
-      // Update local cache
-      const current = localGet(table);
-      localSet(table, [...current, data]);
+      // Update local with server version
+      const updated = localGet(table).map(r => r.id === newRow.id ? data : r);
+      localSet(table, updated);
       return { data, source: 'supabase' };
-    } catch (err) {
-      console.warn(`[DB] Supabase insert failed for ${table}, saving locally:`, err.message);
-      const current = localGet(table);
-      localSet(table, [...current, newRow]);
-      return { data: newRow, source: 'local' };
+    } catch {
+      // Queue for later sync
+      enqueue({ action: 'insert', table, data: newRow });
+      return { data: newRow, source: 'queued' };
     }
   },
 
-  // Delete a row by id
   async remove(table, id) {
-    if (!isSupabaseConfigured()) {
-      const current = localGet(table);
-      localSet(table, current.filter(r => r.id !== id));
-      return { source: 'local' };
-    }
+    // Always remove locally first
+    const current = localGet(table);
+    localSet(table, current.filter(r => r.id !== id));
+
+    if (!isSupabaseConfigured()) return { source: 'local' };
 
     try {
+      if (!navigator.onLine) throw new Error('offline');
       const { error } = await supabase.from(table).delete().eq('id', id);
       if (error) throw error;
-      
-      // Update local cache
-      const current = localGet(table);
-      localSet(table, current.filter(r => r.id !== id));
       return { source: 'supabase' };
-    } catch (err) {
-      console.warn(`[DB] Supabase delete failed, removing locally:`, err.message);
-      const current = localGet(table);
-      localSet(table, current.filter(r => r.id !== id));
-      return { source: 'local' };
+    } catch {
+      enqueue({ action: 'delete', table, id });
+      return { source: 'queued' };
     }
   },
 
-  // Clear all rows from a table
   async clearAll(table) {
     localSet(table, []);
-    
     if (!isSupabaseConfigured()) return;
-    
-    try {
-      await supabase.from(table).delete().neq('id', '');
-    } catch (err) {
-      console.warn(`[DB] Supabase clear failed for ${table}:`, err.message);
-    }
+    try { await supabase.from(table).delete().neq('id', ''); } catch {}
   },
 
-  // Sync local data to Supabase (one-time migration)
   async syncLocalToSupabase(table) {
-    if (!isSupabaseConfigured()) return;
-    
+    if (!isSupabaseConfigured() || !navigator.onLine) return;
     const localData = localGet(table);
     if (localData.length === 0) return;
-
     try {
-      // Check if supabase already has data
       const { data: existing } = await supabase.from(table).select('id').limit(1);
-      if (existing && existing.length > 0) return; // Already has data, skip
+      if (existing && existing.length > 0) return;
+      await supabase.from(table).insert(localData);
+      console.log(`[DB] Synced ${localData.length} rows for ${table}`);
+    } catch {}
+  },
 
-      const { error } = await supabase.from(table).insert(localData);
-      if (error) throw error;
-      console.log(`[DB] Synced ${localData.length} rows from localStorage to Supabase for ${table}`);
-    } catch (err) {
-      console.warn(`[DB] Sync failed for ${table}:`, err.message);
-    }
-  }
+  processQueue,
+  getQueueSize: () => getQueue().length,
 };

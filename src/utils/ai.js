@@ -21,7 +21,7 @@ async function callWithRetry(fn, retries = 2) {
     try { return await fn(); }
     catch (err) {
       if (err.message?.includes('429') && i < retries) {
-        const wait = (i + 1) * 15000; // 15s, 30s
+        const wait = (i + 1) * 45000; // 15s, 30s
         await new Promise(r => setTimeout(r, wait));
         continue;
       }
@@ -107,7 +107,7 @@ export async function fetchMarketPulse() {
   if (cached) return cached;
   const result = await callWithRetry(() => callClaude({
     system: 'Bot veille BRVM. Français, ultra-concis. Max 150 mots.',
-    prompt: 'Pulse BRVM: indices, tendance, 5 opportunité, 1 risque.',
+    prompt: 'Pulse BRVM: indices, tendance, 1 opportunité, 1 risque.',
     useSearch: true,
   }));
   setCache('pulse', result);
@@ -120,4 +120,33 @@ export async function askAI(question, context = '') {
     prompt: question,
     useSearch: true,
   }));
+}
+
+/**
+ * Fetch live data for watchlist tickers
+ */
+export async function fetchTickerData(tickers) {
+  if (!tickers.length) return [];
+  const cached = getCached('watchlist_' + tickers.join(','));
+  if (cached) return cached;
+
+  const result = await callWithRetry(() => callClaude({
+    system: `Tu es un bot de données BRVM. Réponds UNIQUEMENT en JSON valide, rien d'autre. Pas de texte avant ou après le JSON.`,
+    prompt: `Cherche les cours actuels de ces actions BRVM: ${tickers.join(', ')}. 
+Réponds en JSON array: [{"ticker":"SNTS","name":"Sonatel","price":18500,"change":-1.2,"volume":"12K","status":"open"}]
+Les champs: ticker, name (nom complet), price (dernier cours FCFA), change (variation % jour), volume (volume échangé), status (open/closed).
+Si tu ne trouves pas un ticker, mets price:0 et change:0.`,
+    useSearch: true,
+  }));
+
+  try {
+    // Extract JSON from response (might have markdown fences)
+    const cleaned = result.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
+    const data = JSON.parse(cleaned);
+    setCache('watchlist_' + tickers.join(','), data);
+    return data;
+  } catch {
+    console.warn('[AI] Failed to parse ticker data:', result);
+    return tickers.map(t => ({ ticker: t, name: t, price: 0, change: 0, volume: '—', status: 'unknown' }));
+  }
 }

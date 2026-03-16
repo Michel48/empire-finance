@@ -1,11 +1,12 @@
 import React from 'react';
-import { LayoutDashboard, Receipt, PiggyBank, TrendingUp, FileDown, Settings, Sun, Moon, Bot } from 'lucide-react';
+import { LayoutDashboard, Receipt, PiggyBank, TrendingUp, FileDown, Settings, Sun, Moon, Bot, Eye } from 'lucide-react';
 
 const TABS = [
   { id: 'dashboard', label: 'Tableau', icon: LayoutDashboard },
   { id: 'depenses', label: 'Dépenses', icon: Receipt },
   { id: 'epargne', label: 'Épargne', icon: PiggyBank },
   { id: 'brvm', label: 'BRVM', icon: TrendingUp },
+  { id: 'watchlist', label: 'Watch', icon: Eye },
   { id: 'ai', label: 'IA', icon: Bot },
   { id: 'rapport', label: 'Rapport', icon: FileDown },
   { id: 'settings', label: 'Config', icon: Settings },
