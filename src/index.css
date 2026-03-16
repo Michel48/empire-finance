@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { -webkit-tap-highlight-color: transparent; }
+  body {
+    @apply bg-empire-bg text-empire-text antialiased;
+    overscroll-behavior: none;
+  }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #1F2937; border-radius: 4px; }
+  input, select {
+    @apply bg-empire-bg border border-empire-border rounded-xl px-4 py-3 text-empire-text font-mono text-sm outline-none transition-all duration-200;
+  }
+  input:focus, select:focus {
+    @apply border-empire-accent ring-1 ring-empire-accent/30;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.7);
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-empire-card border border-empire-border rounded-2xl p-5 transition-all duration-300;
+  }
+  .card-glow {
+    @apply card;
+    box-shadow: 0 0 40px -12px rgba(200, 169, 98, 0.08);
+  }
+  .btn-primary {
+    @apply w-full py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 active:scale-[0.98];
+    background: linear-gradient(135deg, #C8A962 0%, #D4AF37 100%);
+    color: #0B0F1A;
+  }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-emerald {
+    @apply btn-primary;
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    color: #fff;
+  }
+  .btn-sapphire {
+    @apply btn-primary;
+    background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+    color: #fff;
+  }
+  .btn-amber {
+    @apply btn-primary;
+    background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+    color: #0B0F1A;
+  }
+  .gold-text {
+    background: linear-gradient(135deg, #C8A962 0%, #D4AF37 50%, #E8D48B 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .progress-bar {
+    @apply w-full rounded-full overflow-hidden;
+    background: #1F2937;
+  }
+  .progress-fill {
+    @apply h-full rounded-full transition-all duration-700 ease-out;
+  }
+  .fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+}
