@@ -107,7 +107,7 @@ export async function fetchMarketPulse() {
   if (cached) return cached;
   const result = await callWithRetry(() => callClaude({
     system: 'Bot veille BRVM. Français, ultra-concis. Max 150 mots.',
-    prompt: 'Pulse BRVM: indices, tendance, 1 opportunité, 1 risque.',
+    prompt: 'Pulse BRVM: indices, tendance, 5 opportunité, 1 risque.',
     useSearch: true,
   }));
   setCache('pulse', result);
