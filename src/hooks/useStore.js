@@ -1,60 +1,61 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { db } from '../utils/database';
+import { db, isOnline, getQueueSize, onNetworkChange } from '../utils/database';
 
 /**
- * useStore — Hybrid Supabase + localStorage hook
- * 
- * - Loads from localStorage instantly (fast first paint)
- * - Then fetches from Supabase in background
- * - All writes go to both Supabase + localStorage
- * - Works 100% offline with localStorage fallback
+ * useStore — Hybrid Supabase + localStorage + Offline Queue
  */
 export function useStore(table, defaultValue = []) {
   const [data, setData] = useState(() => {
-    try {
-      const stored = localStorage.getItem('empire_' + table);
-      return stored ? JSON.parse(stored) : defaultValue;
-    } catch { return defaultValue; }
+    try { return JSON.parse(localStorage.getItem('empire_' + table)) || defaultValue; } catch { return defaultValue; }
   });
   const [loading, setLoading] = useState(true);
-  const [dbStatus, setDbStatus] = useState('loading'); // 'loading' | 'online' | 'offline'
+  const [dbStatus, setDbStatus] = useState('loading');
+  const [pendingSync, setPendingSync] = useState(getQueueSize());
   const initialized = useRef(false);
 
-  // Load from Supabase on mount
+  // Listen to network changes
+  useEffect(() => {
+    const unsub = onNetworkChange(async (online) => {
+      setDbStatus(online ? 'online' : 'offline');
+      setPendingSync(getQueueSize());
+      if (online) {
+        // Re-fetch fresh data when coming back online
+        try {
+          const rows = await db.getAll(table);
+          setData(rows);
+          setPendingSync(getQueueSize());
+        } catch {}
+      }
+    });
+    return unsub;
+  }, [table]);
+
+  // Initial load
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
-
     (async () => {
       try {
-        // Try syncing existing localStorage data first
         await db.syncLocalToSupabase(table);
-        
         const rows = await db.getAll(table);
         setData(rows);
-        setDbStatus('online');
-      } catch {
-        setDbStatus('offline');
-      }
+        setDbStatus(isOnline() ? 'online' : 'offline');
+      } catch { setDbStatus('offline'); }
+      setPendingSync(getQueueSize());
       setLoading(false);
     })();
   }, [table]);
 
-  // Add a row
   const add = useCallback(async (row) => {
     const newRow = { ...row, id: row.id || crypto.randomUUID() };
-    
-    // Optimistic update (instant UI)
     setData(prev => {
       const updated = [...prev, newRow];
       localStorage.setItem('empire_' + table, JSON.stringify(updated));
       return updated;
     });
-
-    // Persist to Supabase in background
     const result = await db.insert(table, newRow);
+    setPendingSync(getQueueSize());
     if (result.source === 'supabase' && result.data) {
-      // Update with server-side data (might have different id)
       setData(prev => {
         const updated = prev.map(r => r.id === newRow.id ? result.data : r);
         localStorage.setItem('empire_' + table, JSON.stringify(updated));
@@ -64,19 +65,16 @@ export function useStore(table, defaultValue = []) {
     return result.data;
   }, [table]);
 
-  // Remove a row
   const remove = useCallback(async (id) => {
-    // Optimistic update
     setData(prev => {
       const updated = prev.filter(r => r.id !== id);
       localStorage.setItem('empire_' + table, JSON.stringify(updated));
       return updated;
     });
-
     await db.remove(table, id);
+    setPendingSync(getQueueSize());
   }, [table]);
 
-  // Set all data (for compatibility with old interface)
   const setAll = useCallback((newValOrFn) => {
     setData(prev => {
       const resolved = typeof newValOrFn === 'function' ? newValOrFn(prev) : newValOrFn;
@@ -85,14 +83,13 @@ export function useStore(table, defaultValue = []) {
     });
   }, [table]);
 
-  // Clear all
   const clearAll = useCallback(async () => {
     setData([]);
     localStorage.setItem('empire_' + table, JSON.stringify([]));
     await db.clearAll(table);
   }, [table]);
 
-  return { data, add, remove, setAll, clearAll, loading, dbStatus };
+  return { data, add, remove, setAll, clearAll, loading, dbStatus, pendingSync };
 }
 
 /**
@@ -109,11 +106,7 @@ export function useTheme() {
 
   useEffect(() => {
     const root = document.documentElement;
-    if (dark) {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
+    root.classList.toggle('dark', dark);
     localStorage.setItem('empire_theme', dark ? 'dark' : 'light');
   }, [dark]);
 
