@@ -15,7 +15,7 @@ export function generateReport({ expenses, savings, brvmInvests, dateFrom, dateT
   doc.setTextColor(...gold);
   doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
-  doc.text('EMPIRE FINANCE', 15, 22);
+  doc.text('Michel Arnaud Finance', 15, 22);
   doc.setFontSize(10);
   doc.setTextColor(200, 200, 200);
   doc.text(`Rapport du ${dateFrom} au ${dateTo}`, 15, 32);
@@ -153,7 +153,7 @@ export function generateReport({ expenses, savings, brvmInvests, dateFrom, dateT
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(...gray);
-    doc.text(`Empire Finance — Page ${i}/${pageCount}`, 105, 290, { align: 'center' });
+    doc.text(`Michel Arnaud Finance — Page ${i}/${pageCount}`, 105, 290, { align: 'center' });
   }
 
   doc.save(`empire-finance-rapport-${dateFrom}-${dateTo}.pdf`);
