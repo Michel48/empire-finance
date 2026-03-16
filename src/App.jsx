@@ -6,6 +6,7 @@ import Epargne from './pages/Epargne';
 import Brvm from './pages/Brvm';
 import Rapport from './pages/Rapport';
 import Settings from './pages/Settings';
+import AIInsights from './pages/AIInsights';
 import { useStore, useTheme } from './hooks/useStore';
 import { isSupabaseConfigured } from './utils/supabase';
 import { CloudOff, Cloud, Wifi } from 'lucide-react';
@@ -30,6 +31,7 @@ export default function App() {
     depenses: <Depenses expenses={expenses.data} addExpense={expenses.add} removeExpense={expenses.remove} />,
     epargne: <Epargne savings={savings.data} addSaving={savings.add} removeSaving={savings.remove} />,
     brvm: <Brvm brvmInvests={brvmInvests.data} addBrvm={brvmInvests.add} removeBrvm={brvmInvests.remove} />,
+    ai: <AIInsights expenses={expenses.data} savings={savings.data} brvmInvests={brvmInvests.data} />,
     rapport: <Rapport expenses={expenses.data} savings={savings.data} brvmInvests={brvmInvests.data} />,
     settings: <Settings />,
   };

@@ -1,11 +1,12 @@
 import React from 'react';
-import { LayoutDashboard, Receipt, PiggyBank, TrendingUp, FileDown, Settings, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Receipt, PiggyBank, TrendingUp, FileDown, Settings, Sun, Moon, Bot } from 'lucide-react';
 
 const TABS = [
   { id: 'dashboard', label: 'Tableau', icon: LayoutDashboard },
   { id: 'depenses', label: 'Dépenses', icon: Receipt },
   { id: 'epargne', label: 'Épargne', icon: PiggyBank },
   { id: 'brvm', label: 'BRVM', icon: TrendingUp },
+  { id: 'ai', label: 'IA', icon: Bot },
   { id: 'rapport', label: 'Rapport', icon: FileDown },
   { id: 'settings', label: 'Config', icon: Settings },
 ];
@@ -18,10 +19,10 @@ export default function Navigation({ active, onChange, dark, onToggleTheme }) {
         <div className="max-w-4xl mx-auto px-5 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--gold)] flex items-center justify-center shadow-lg">
-              <span className="text-white font-display font-bold text-sm">MA.F</span>
+              <span className="text-white font-display font-bold text-sm">E</span>
             </div>
             <div>
-              <h1 className="text-lg font-display font-bold gold-text tracking-wide">Michel Arnaud Finance</h1>
+              <h1 className="text-lg font-display font-bold gold-text tracking-wide">Empire Finance</h1>
               <p className="text-[10px] text-empire-muted -mt-0.5">Build your empire, one franc at a time</p>
             </div>
           </div>

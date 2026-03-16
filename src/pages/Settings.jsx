@@ -275,7 +275,7 @@ export default function Settings() {
 
       {/* Version */}
       <div className="text-center text-[10px] text-empire-muted py-4">
-        Michel Arnaud Finance v2.0 · Built for future billionaires
+        Empire Finance v2.0 · Built for future billionaires 🏆
       </div>
     </div>
   );

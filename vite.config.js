@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'Michel Arnaud Finance — Michem',
-        short_name: 'Michel Arnaud Finance',
+        name: 'Empire Finance — Michem',
+        short_name: 'Empire Finance',
         description: 'Suivi financier personnel — Dépenses, Épargne, BRVM',
         theme_color: '#0B0F1A',
         background_color: '#0B0F1A',
