@@ -1,14 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { Download, FileText, Calendar } from 'lucide-react';
+import { Download, FileText } from 'lucide-react';
 import { SectionCard, SectionTitle, FormField, KpiCard } from '../components/UI';
 import { fmt, fmtCompact, today } from '../utils/format';
 import { CATEGORIES } from '../utils/constants';
 import { generateReport } from '../utils/reportGenerator';
 
 export default function Rapport({ expenses, savings, brvmInvests }) {
-  const firstDayOfMonth = new Date();
-  firstDayOfMonth.setDate(1);
-  const [dateFrom, setDateFrom] = useState(firstDayOfMonth.toISOString().slice(0, 10));
+  const firstDay = new Date(); firstDay.setDate(1);
+  const [dateFrom, setDateFrom] = useState(firstDay.toISOString().slice(0, 10));
   const [dateTo, setDateTo] = useState(today());
   const [generating, setGenerating] = useState(false);
 
@@ -16,118 +15,71 @@ export default function Rapport({ expenses, savings, brvmInvests }) {
     const exp = expenses.filter(e => e.date >= dateFrom && e.date <= dateTo);
     const sav = savings.filter(s => s.date >= dateFrom && s.date <= dateTo);
     const brv = brvmInvests.filter(b => b.date >= dateFrom && b.date <= dateTo);
-    return {
-      expenses: exp,
-      savings: sav,
-      brvm: brv,
-      totalExp: exp.reduce((s, e) => s + Number(e.amount), 0),
-      totalSav: sav.reduce((s, e) => s + Number(e.amount), 0),
-      totalBrv: brv.reduce((s, e) => s + Number(e.amount), 0),
-      txCount: exp.length + sav.length + brv.length,
-    };
+    return { expenses: exp, savings: sav, brvm: brv, totalExp: exp.reduce((s, e) => s + Number(e.amount), 0), totalSav: sav.reduce((s, e) => s + Number(e.amount), 0), totalBrv: brv.reduce((s, e) => s + Number(e.amount), 0), txCount: exp.length + sav.length + brv.length };
   }, [expenses, savings, brvmInvests, dateFrom, dateTo]);
 
-  const catBreakdown = useMemo(() => {
-    return CATEGORIES.map(cat => ({
-      ...cat,
-      total: filtered.expenses.filter(e => e.category === cat.id).reduce((s, e) => s + Number(e.amount), 0),
-    })).filter(c => c.total > 0).sort((a, b) => b.total - a.total);
-  }, [filtered.expenses]);
+  const catBreakdown = useMemo(() =>
+    CATEGORIES.map(cat => ({ ...cat, total: filtered.expenses.filter(e => e.category === cat.id).reduce((s, e) => s + Number(e.amount), 0) })).filter(c => c.total > 0).sort((a, b) => b.total - a.total),
+  [filtered.expenses]);
 
   const handleDownload = async () => {
     setGenerating(true);
-    try {
-      await new Promise(r => setTimeout(r, 300));
-      generateReport({ expenses, savings, brvmInvests, dateFrom, dateTo });
-    } catch (err) {
-      alert('Erreur lors de la génération du rapport. Vérifie ta connexion.');
-    }
+    try { await new Promise(r => setTimeout(r, 300)); generateReport({ expenses, savings, brvmInvests, dateFrom, dateTo }); } catch { alert('Erreur lors de la génération.'); }
     setGenerating(false);
   };
 
-  // Quick period selectors
-  const setThisMonth = () => {
-    const d = new Date();
-    d.setDate(1);
-    setDateFrom(d.toISOString().slice(0, 10));
-    setDateTo(today());
-  };
-  const setLastMonth = () => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - 1, 1);
-    setDateFrom(d.toISOString().slice(0, 10));
-    const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-    setDateTo(end.toISOString().slice(0, 10));
-  };
-  const setLast3Months = () => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - 3, 1);
-    setDateFrom(d.toISOString().slice(0, 10));
-    setDateTo(today());
-  };
-  const setThisYear = () => {
-    setDateFrom(new Date().getFullYear() + '-01-01');
-    setDateTo(today());
-  };
-  const setAllTime = () => {
-    setDateFrom('2020-01-01');
-    setDateTo(today());
-  };
-
-  const quickButtons = [
-    { label: 'Ce mois', fn: setThisMonth },
-    { label: 'Mois dernier', fn: setLastMonth },
-    { label: '3 derniers mois', fn: setLast3Months },
-    { label: 'Cette année', fn: setThisYear },
-    { label: 'Tout', fn: setAllTime },
+  const setPeriod = (fn) => fn();
+  const periods = [
+    { label: 'Ce mois', fn: () => { const d = new Date(); d.setDate(1); setDateFrom(d.toISOString().slice(0, 10)); setDateTo(today()); } },
+    { label: 'Mois dernier', fn: () => { const d = new Date(); d.setMonth(d.getMonth() - 1, 1); setDateFrom(d.toISOString().slice(0, 10)); setDateTo(new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10)); } },
+    { label: '3 mois', fn: () => { const d = new Date(); d.setMonth(d.getMonth() - 3, 1); setDateFrom(d.toISOString().slice(0, 10)); setDateTo(today()); } },
+    { label: 'Année', fn: () => { setDateFrom(new Date().getFullYear() + '-01-01'); setDateTo(today()); } },
+    { label: 'Tout', fn: () => { setDateFrom('2020-01-01'); setDateTo(today()); } },
   ];
 
+  const exportCSV = (data, name) => {
+    if (!data.length) { alert('Aucune donnée.'); return; }
+    const headers = Object.keys(data[0]).filter(k => k !== 'id').join(',');
+    const rows = data.map(d => Object.keys(d).filter(k => k !== 'id').map(k => `"${d[k]}"`).join(','));
+    const blob = new Blob(['\ufeff' + [headers, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `empire-${name}-${dateFrom}-${dateTo}.csv`; a.click();
+  };
+
   return (
-    <div className="flex flex-col gap-3.5">
-      {/* Header */}
+    <div className="flex flex-col gap-4">
+      {/* Main card */}
       <SectionCard glow>
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-empire-accent/10 flex items-center justify-center">
-            <FileText size={20} className="text-empire-accent" />
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-11 h-11 rounded-2xl bg-[var(--accent)]/10 flex items-center justify-center">
+            <FileText size={22} className="text-empire-accent" />
           </div>
           <div>
-            <h2 className="text-sm font-bold">Générer un rapport PDF</h2>
-            <p className="text-[10px] text-empire-muted">Sélectionne la période et télécharge ton reporting complet</p>
+            <h2 className="text-sm font-bold text-empire-text">Générer un rapport</h2>
+            <p className="text-[10px] text-empire-muted mt-0.5">Télécharge ton reporting PDF ou exporte en CSV</p>
           </div>
         </div>
 
         {/* Quick periods */}
         <div className="flex flex-wrap gap-1.5 mb-4">
-          {quickButtons.map(b => (
-            <button key={b.label} onClick={b.fn} className="px-3 py-1.5 rounded-lg text-[11px] font-semibold border border-empire-border text-empire-muted hover:text-empire-accent hover:border-empire-accent/30 transition-all">
-              {b.label}
+          {periods.map(p => (
+            <button key={p.label} onClick={() => setPeriod(p.fn)} className="px-3.5 py-2 rounded-xl text-[11px] font-semibold border border-empire-border text-empire-muted hover:text-empire-accent hover:border-[var(--accent)]/30 hover:bg-[var(--accent)]/5 transition-all">
+              {p.label}
             </button>
           ))}
         </div>
 
         {/* Date pickers */}
-        <div className="flex flex-wrap gap-3">
-          <FormField label="Du">
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
-          </FormField>
-          <FormField label="Au">
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
-          </FormField>
+        <div className="flex flex-wrap gap-3 mb-4">
+          <FormField label="Du"><input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></FormField>
+          <FormField label="Au"><input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></FormField>
         </div>
 
-        <button onClick={handleDownload} disabled={generating} className="btn-primary mt-4 flex items-center justify-center gap-2">
-          {generating ? (
-            <span className="animate-pulse">Génération en cours...</span>
-          ) : (
-            <>
-              <Download size={16} />
-              Télécharger le rapport PDF
-            </>
-          )}
+        <button onClick={handleDownload} disabled={generating} className="w-full py-3.5 rounded-xl font-bold text-sm bg-gradient-to-r from-[var(--accent)] to-[var(--gold)] text-[#0A0E18] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-60">
+          {generating ? <span className="animate-pulse">Génération...</span> : <><Download size={16} /> Télécharger PDF</>}
         </button>
       </SectionCard>
 
-      {/* Preview KPIs */}
+      {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard icon="💸" title="Dépenses" value={fmtCompact(filtered.totalExp)} accent="#EF4444" />
         <KpiCard icon="🏦" title="Épargne" value={fmtCompact(filtered.totalSav)} accent="#10B981" />
@@ -135,102 +87,80 @@ export default function Rapport({ expenses, savings, brvmInvests }) {
         <KpiCard icon="📋" title="Transactions" value={filtered.txCount} accent="#8B5CF6" />
       </div>
 
-      {/* Category breakdown preview */}
+      {/* Category breakdown */}
       {catBreakdown.length > 0 && (
         <SectionCard>
-          <SectionTitle icon="📊">Aperçu — Dépenses par catégorie</SectionTitle>
-          <div className="space-y-2">
+          <SectionTitle icon="📊">Dépenses par catégorie</SectionTitle>
+          <div className="space-y-1">
             {catBreakdown.map(cat => (
-              <div key={cat.id} className="flex items-center justify-between py-2 border-b border-empire-border/50 last:border-0">
-                <div className="flex items-center gap-2">
-                  <span>{cat.icon}</span>
-                  <span className="text-xs font-semibold">{cat.label}</span>
+              <div key={cat.id} className="flex items-center justify-between py-2.5 border-b border-empire-border/40 last:border-0">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-base">{cat.icon}</span>
+                  <span className="text-xs font-semibold text-empire-text">{cat.label}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-[10px] text-empire-muted font-mono">
-                    {filtered.totalExp ? ((cat.total / filtered.totalExp) * 100).toFixed(1) : 0}%
-                  </span>
+                  <span className="text-[10px] text-empire-muted font-mono">{filtered.totalExp ? ((cat.total / filtered.totalExp) * 100).toFixed(0) : 0}%</span>
                   <span className="text-xs font-mono font-bold" style={{ color: cat.color }}>{fmtCompact(cat.total)}</span>
                 </div>
               </div>
             ))}
-            <div className="flex items-center justify-between pt-2 border-t border-empire-border">
+            <div className="flex items-center justify-between pt-3 mt-1 border-t-2 border-empire-border">
               <span className="text-xs font-bold">TOTAL</span>
-              <span className="text-sm font-mono font-bold text-red-400">{fmt(filtered.totalExp)}</span>
+              <span className="text-sm font-mono font-bold text-red-500">{fmt(filtered.totalExp)}</span>
             </div>
           </div>
         </SectionCard>
       )}
 
-      {/* Recent transactions preview */}
+      {/* Transactions */}
       <SectionCard>
-        <SectionTitle icon="📝">Dernières transactions de la période</SectionTitle>
-        {filtered.txCount === 0 ? (
-          <div className="text-center py-8 text-empire-muted text-xs">Aucune transaction sur cette période.</div>
-        ) : (
-          <div className="space-y-0.5">
+        <SectionTitle icon="📝">Dernières transactions</SectionTitle>
+        {filtered.txCount === 0 ? <EmptyState message="Aucune transaction sur cette période." /> : (
+          <div className="space-y-1">
             {[
-              ...filtered.expenses.map(e => ({ ...e, type: 'expense', sortDate: e.date })),
-              ...filtered.savings.map(s => ({ ...s, type: 'saving', sortDate: s.date })),
-              ...filtered.brvm.map(b => ({ ...b, type: 'brvm', sortDate: b.date })),
-            ]
-              .sort((a, b) => b.sortDate.localeCompare(a.sortDate))
-              .slice(0, 15)
-              .map(tx => {
-                const cat = CATEGORIES.find(c => c.id === tx.category);
-                const icons = { expense: cat?.icon || '💸', saving: '🏦', brvm: '📈' };
-                const labels = { expense: cat?.label || 'Dépense', saving: 'Épargne', brvm: tx.ticker || 'BRVM' };
-                const colors = { expense: '#EF4444', saving: '#10B981', brvm: '#F59E0B' };
-                const signs = { expense: '-', saving: '+', brvm: '' };
-                return (
-                  <div key={tx.id} className="flex items-center justify-between py-2 border-b border-empire-border/50 last:border-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">{icons[tx.type]}</span>
-                      <div>
-                        <div className="text-[11px] font-semibold">{labels[tx.type]}</div>
-                        <div className="text-[9px] text-empire-muted">{tx.date}{tx.note ? ` — ${tx.note}` : ''}</div>
-                      </div>
+              ...filtered.expenses.map(e => ({ ...e, type: 'expense' })),
+              ...filtered.savings.map(s => ({ ...s, type: 'saving' })),
+              ...filtered.brvm.map(b => ({ ...b, type: 'brvm' })),
+            ].sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 15).map(tx => {
+              const cat = CATEGORIES.find(c => c.id === tx.category);
+              const cfg = { expense: { icon: cat?.icon || '💸', label: cat?.label || 'Dépense', color: '#EF4444', sign: '-' }, saving: { icon: '🏦', label: 'Épargne', color: '#10B981', sign: '+' }, brvm: { icon: '📈', label: tx.ticker || 'BRVM', color: '#F59E0B', sign: '' } }[tx.type];
+              return (
+                <div key={tx.id} className="flex items-center justify-between py-2.5 border-b border-empire-border/40 last:border-0">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-base">{cfg.icon}</span>
+                    <div>
+                      <div className="text-[11px] font-semibold text-empire-text">{cfg.label}</div>
+                      <div className="text-[9px] text-empire-muted">{tx.date}{tx.note ? ` · ${tx.note}` : ''}</div>
                     </div>
-                    <span className="font-mono font-bold text-xs" style={{ color: colors[tx.type] }}>
-                      {signs[tx.type]}{fmtCompact(tx.amount)}
-                    </span>
                   </div>
-                );
-              })}
+                  <span className="font-mono font-bold text-xs" style={{ color: cfg.color }}>{cfg.sign}{fmtCompact(tx.amount)}</span>
+                </div>
+              );
+            })}
           </div>
         )}
       </SectionCard>
 
-      {/* Export CSV */}
+      {/* CSV Export */}
       <SectionCard>
         <SectionTitle icon="📁">Export CSV</SectionTitle>
-        <p className="text-[11px] text-empire-muted mb-3">Exporte tes données brutes pour les analyser dans Excel ou Google Sheets.</p>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => exportCSV(filtered.expenses, 'depenses', dateFrom, dateTo)} className="flex-1 py-2.5 rounded-xl text-xs font-semibold border border-red-500/30 text-red-400 hover:bg-red-500/5 transition-all">
-            💸 Dépenses CSV
-          </button>
-          <button onClick={() => exportCSV(filtered.savings, 'epargne', dateFrom, dateTo)} className="flex-1 py-2.5 rounded-xl text-xs font-semibold border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/5 transition-all">
-            🏦 Épargne CSV
-          </button>
-          <button onClick={() => exportCSV(filtered.brvm, 'brvm', dateFrom, dateTo)} className="flex-1 py-2.5 rounded-xl text-xs font-semibold border border-amber-500/30 text-amber-400 hover:bg-amber-500/5 transition-all">
-            📈 BRVM CSV
-          </button>
+        <p className="text-[11px] text-empire-muted mb-4">Exporte tes données pour Excel ou Google Sheets.</p>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: '💸 Dépenses', data: filtered.expenses, name: 'depenses', color: 'red' },
+            { label: '🏦 Épargne', data: filtered.savings, name: 'epargne', color: 'emerald' },
+            { label: '📈 BRVM', data: filtered.brvm, name: 'brvm', color: 'amber' },
+          ].map(e => (
+            <button key={e.name} onClick={() => exportCSV(e.data, e.name)} className={`py-3 rounded-xl text-[11px] font-semibold border border-${e.color}-500/25 text-${e.color}-500 hover:bg-${e.color}-500/5 transition-all active:scale-[0.97]`}>
+              {e.label}
+            </button>
+          ))}
         </div>
       </SectionCard>
     </div>
   );
 }
 
-function exportCSV(data, name, from, to) {
-  if (data.length === 0) { alert('Aucune donnée à exporter pour cette période.'); return; }
-  const headers = Object.keys(data[0]).filter(k => k !== 'id').join(',');
-  const rows = data.map(d => Object.keys(d).filter(k => k !== 'id').map(k => `"${d[k]}"`).join(','));
-  const csv = [headers, ...rows].join('\n');
-  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `empire-${name}-${from}-${to}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+function EmptyState({ message }) {
+  return <div className="text-center py-10 text-empire-muted text-xs"><div className="text-3xl mb-2">📭</div>{message}</div>;
 }

@@ -1,175 +1,143 @@
-# 💰 Empire Finance — Tableau de Bord Financier Personnel
+# 💰 Empire Finance — Tableau de Bord Financier
 
-Application web progressive (PWA) de suivi financier conçue pour construire ton empire, un franc à la fois.
+Application PWA de suivi financier avec base de données Supabase (gratuit).
 
-## ✨ Fonctionnalités
-
-### 📊 Tableau de Bord
-- Vue d'ensemble KPIs en temps réel (dépenses, épargne, patrimoine, BRVM)
-- Graphique camembert des dépenses par catégorie
-- Graphique barres évolution sur 6 mois
-- Barres de progression par objectif d'épargne
-- Suivi budget par catégorie avec alertes
-
-### 💸 Suivi des Dépenses
-- 8 catégories (transport, téléphone, famille, alimentation, loisirs, santé, vêtements, divers)
-- Budget plafond à 150 000 FCFA/mois
-- Alertes automatiques en cas de dépassement
-- Historique filtrable par mois
-
-### 🏦 Épargne Multi-Objectifs
-- 3 objectifs prédéfinis (emménagement, fonds d'urgence, capital e-commerce)
-- Création d'objectifs personnalisés illimités
-- Barres de progression visuelles
-- Historique des versements
-
-### 📈 Investissement BRVM
-- Stratégie recommandée (60% blue chips / 25% croissance / 15% obligations)
-- Suivi par ticker avec agrégation portefeuille
-- Graphique tendance investissements
-- Historique complet
-
-### 📄 Rapports & Export
-- **Rapport PDF** professionnel avec mise en page soignée
-- Sélection de période rapide (ce mois, mois dernier, 3 mois, année, tout)
-- Sélection de dates personnalisées
-- Aperçu avant téléchargement
-- **Export CSV** par catégorie (dépenses, épargne, BRVM)
-- Compatible Excel et Google Sheets
-
-### 📱 Mobile-First
-- Interface responsive optimisée mobile
-- Navigation bottom-bar tactile
-- Installable en PWA (icône sur l'écran d'accueil)
-- Fonctionne hors-ligne
-
----
-
-## 🚀 Déploiement Gratuit (Vercel)
-
-### Étape 1 : Préparer le projet
+## 🚀 Mise en route rapide
 
 ```bash
-# Cloner ou copier les fichiers du projet
 cd empire-finance
-
-# Installer les dépendances
 npm install
-
-# Tester en local
+cp .env.example .env
+# Editer .env avec tes clés Supabase (optionnel)
 npm run dev
 ```
 
-### Étape 2 : Push sur GitHub
+> **Sans Supabase**, l'app fonctionne à 100% en mode localStorage.  
+> **Avec Supabase**, tes données sont sauvegardées dans le cloud et persistantes.
+
+---
+
+## 🗄️ Configurer Supabase (gratuit, 5 min)
+
+### Étape 1 — Créer le projet
+
+1. Va sur [supabase.com](https://supabase.com) → Sign Up (gratuit)
+2. Clique **New Project**
+3. Nom : `empire-finance`
+4. Mot de passe BDD : choisis un mot de passe fort
+5. Région : choisir la plus proche (ex: Frankfurt)
+6. Clique **Create new project** — attends ~2 min
+
+### Étape 2 — Créer les tables
+
+1. Dans ton projet Supabase, va dans **SQL Editor** (menu gauche)
+2. Clique **New Query**
+3. Copie-colle le contenu entier du fichier `supabase-schema.sql`
+4. Clique **Run** (le bouton vert)
+5. Tu devrais voir "Success. No rows returned" — c'est normal
+
+### Étape 3 — Récupérer les clés API
+
+1. Va dans **Settings** → **API** (menu gauche)
+2. Copie :
+   - **Project URL** : `https://xxxxxxxx.supabase.co`
+   - **anon public key** : `eyJhbGc...` (la longue clé)
+
+### Étape 4 — Configurer l'app
+
+Crée un fichier `.env` à la racine du projet :
+
+```
+VITE_SUPABASE_URL=https://xxxxxxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGc...ta_clé_ici
+```
+
+Relance `npm run dev` — tu verras le badge **"Synced"** en vert.
+
+---
+
+## 🌐 Déployer sur Vercel (gratuit)
+
+### Étape 1 — Push sur GitHub
 
 ```bash
 git init
 git add .
-git commit -m "Empire Finance v1"
+git commit -m "Empire Finance v2"
 git branch -M main
-git remote add origin https://github.com/TON-USERNAME/empire-finance.git
+git remote add origin https://github.com/TON-USER/empire-finance.git
 git push -u origin main
 ```
 
-### Étape 3 : Déployer sur Vercel (100% gratuit)
+### Étape 2 — Déployer
 
-1. Va sur [vercel.com](https://vercel.com) et connecte ton compte GitHub
-2. Clique "New Project"
-3. Sélectionne le repo `empire-finance`
-4. Vercel détecte automatiquement Vite — clique "Deploy"
-5. En 30 secondes, ton app est live sur `empire-finance-xxx.vercel.app`
+1. Va sur [vercel.com](https://vercel.com) → connecte GitHub
+2. **New Project** → sélectionne `empire-finance`
+3. **IMPORTANT** : Avant de cliquer Deploy, va dans **Environment Variables**
+4. Ajoute :
+   - `VITE_SUPABASE_URL` → ta Project URL Supabase
+   - `VITE_SUPABASE_ANON_KEY` → ta anon key Supabase
+5. Clique **Deploy**
 
-### Étape 4 : Installer sur téléphone
+Ton app est live sur `empire-finance-xxx.vercel.app` avec la BDD !
 
-1. Ouvre l'URL Vercel dans Chrome sur ton téléphone
-2. Menu ⋮ → "Ajouter à l'écran d'accueil"
-3. L'app s'installe comme une application native !
+### Étape 3 — Installer sur téléphone
 
----
-
-## 🔧 Alternatives d'hébergement gratuit
-
-| Service | URL | Avantages |
-|---------|-----|-----------|
-| **Vercel** | vercel.com | Le plus simple, auto-deploy |
-| **Netlify** | netlify.com | Drag & drop le dossier `dist/` |
-| **GitHub Pages** | pages.github.com | Intégré à GitHub |
-| **Cloudflare Pages** | pages.cloudflare.com | CDN mondial rapide |
-
-Pour Netlify en drag & drop :
-```bash
-npm run build
-# Puis drag & drop le dossier dist/ sur app.netlify.com/drop
-```
+1. Ouvre l'URL dans Chrome/Safari
+2. **Chrome** : Menu ⋮ → "Ajouter à l'écran d'accueil"
+3. **Safari** : Partager → "Sur l'écran d'accueil"
 
 ---
 
-## 🛠️ Stack Technique
-
-- **React 18** — Interface utilisateur
-- **Vite** — Build ultra-rapide
-- **Tailwind CSS** — Styling utilitaire
-- **Recharts** — Graphiques interactifs
-- **jsPDF + autoTable** — Génération PDF
-- **date-fns** — Manipulation de dates
-- **Lucide React** — Icônes
-- **vite-plugin-pwa** — Progressive Web App
-- **LocalStorage** — Persistance des données
-
----
-
-## 📁 Structure du Projet
+## 📁 Architecture
 
 ```
 empire-finance/
-├── public/
-│   └── favicon.svg
+├── .env.example              # Template variables d'environnement
+├── supabase-schema.sql       # Script SQL à exécuter dans Supabase
 ├── src/
+│   ├── utils/
+│   │   ├── supabase.js       # Client Supabase
+│   │   ├── database.js       # Couche CRUD (Supabase + localStorage)
+│   │   ├── constants.js      # Config (salaire, catégories, objectifs)
+│   │   ├── format.js         # Utilitaires de formatage
+│   │   └── reportGenerator.js # Génération PDF
+│   ├── hooks/
+│   │   └── useStore.js       # Hook hybride Supabase/localStorage + theme
 │   ├── components/
 │   │   ├── Navigation.jsx    # Nav desktop + bottom bar mobile
 │   │   └── UI.jsx            # Composants réutilisables
-│   ├── hooks/
-│   │   └── useStore.js       # Hook localStorage
 │   ├── pages/
-│   │   ├── Dashboard.jsx     # Tableau de bord
+│   │   ├── Dashboard.jsx     # Tableau de bord + graphiques
 │   │   ├── Depenses.jsx      # Suivi dépenses
 │   │   ├── Epargne.jsx       # Épargne multi-objectifs
 │   │   ├── Brvm.jsx          # Investissements BRVM
 │   │   └── Rapport.jsx       # Rapports PDF/CSV
-│   ├── utils/
-│   │   ├── constants.js      # Configuration
-│   │   ├── format.js         # Utilitaires formatage
-│   │   └── reportGenerator.js # Génération PDF
-│   ├── App.jsx               # App principale
-│   ├── main.jsx              # Point d'entrée
-│   └── index.css             # Styles globaux
+│   ├── App.jsx
+│   ├── main.jsx
+│   └── index.css             # Thèmes dark/light + safe areas
 ├── index.html
 ├── package.json
-├── vite.config.js
-├── tailwind.config.js
-├── postcss.config.js
-└── README.md
+├── vite.config.js            # Vite + PWA
+└── tailwind.config.js
 ```
 
----
+## 🔒 Sécurité
+
+L'app utilise la clé **anon** de Supabase avec RLS (Row Level Security).
+Pour un usage strictement personnel, c'est suffisant car :
+- La clé anon est conçue pour être exposée côté client
+- Les politiques RLS contrôlent l'accès aux données
+- Seul toi connais l'URL de ton app
+
+Pour renforcer la sécurité plus tard, tu peux activer l'**Auth Supabase** (email/password ou magic link).
 
 ## 💡 Personnalisation
 
-### Changer le salaire et budgets
-Édite `src/utils/constants.js` :
-```js
-export const SALARY = 566000;        // Ton salaire
-export const MAX_DEPENSES = 150000;  // Plafond dépenses
-```
-
-### Ajouter des catégories
-Dans le même fichier, ajoute au tableau `CATEGORIES` :
-```js
-{ id: 'education', label: 'Formation', icon: '📚', color: '#06B6D4', budget: 20000 },
-```
-
-### Ajouter des objectifs
-Ajoute au tableau `SAVINGS_GOALS` ou utilise le bouton "Ajouter" dans l'app.
+Édite `src/utils/constants.js` pour changer :
+- Salaire, budget max, catégories de dépenses
+- Objectifs d'épargne prédéfinis
+- Stratégie BRVM
 
 ---
 

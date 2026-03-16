@@ -16,7 +16,8 @@
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.4",
     "date-fns": "^4.1.0",
-    "lucide-react": "^0.460.0"
+    "lucide-react": "^0.460.0",
+    "@supabase/supabase-js": "^2.47.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",
